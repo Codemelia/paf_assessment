@@ -249,12 +249,14 @@ public class MovieService {
 
     }
 
-    return null;
+    // incomplete
+
+    return dirList;
 
   }
 
 
-  // TODO: Task 4
+  // TODO: Task 4 - not done
   // You may change the signature of this method by passing any number of parameters
   // and returning any type
   public void generatePDFReport() {

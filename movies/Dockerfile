@@ -24,7 +24,7 @@ ARG WORK_DIR=/app
 WORKDIR ${WORK_DIR}
 
 # from builder [dir for file in builder] [new filename for this stage]
-COPY --from=builder /compiledir/target/paf_b5_assessment-0.0.1-SNAPSHOT.jar pafassessment.jar
+COPY --from=builder /compiledir/target/movies-0.0.1-SNAPSHOT.jar movies.jar
 
 ENV SERVER_PORT=8080
 
@@ -32,4 +32,4 @@ EXPOSE ${SERVER_PORT}
 
 SHELL [ "/bin/sh", "-c" ]
 
-ENTRYPOINT SERVER_PORT=${SERVER_PORT} java -jar pafassessment.jar
+ENTRYPOINT SERVER_PORT=${SERVER_PORT} java -jar movies.jar
