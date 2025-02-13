@@ -8,6 +8,10 @@ import java.util.Map;
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.GroupOperation;
+import org.springframework.data.mongodb.core.aggregation.LimitOperation;
+import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
@@ -101,9 +105,47 @@ public class MongoMovieRepository {
 
     // TODO: Task 3
     // Write the native Mongo query you implement in the method in the comments
-    //
-    //    native MongoDB query here
-    //
+    /*
+      db.reviews.aggregate([
+        {
+          $group: {
+            _id: "$director",
+            movies_count: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            _id: 1,
+            director: 1,
+            movies_count: 1
+          }
+        },
+        { 
+          $limit: <num> 
+        }
+      ])
+    */
+    public List<Document> getDirectors(Integer num) {
+        
+        // group
+        GroupOperation groupOps = Aggregation.group("director").count().as("movies_count");
+
+        // project
+        ProjectionOperation projectOps = Aggregation.project(
+            "_id", "director", "movies_count"
+        );
+
+        // limit
+        LimitOperation limitOps = Aggregation.limit(num);
+
+        // perform aggregation and return Document
+        Aggregation pipeline = Aggregation.newAggregation(
+            groupOps, projectOps, limitOps
+        );
+
+        return template.aggregate(pipeline, "imdb", Document.class).getMappedResults();
+
+    }
 
 
 }

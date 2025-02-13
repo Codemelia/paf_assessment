@@ -2,19 +2,25 @@ package vttp.batch5.paf.movies.services;
 
 import java.io.StringReader;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.json.JsonValue.ValueType;
+import net.sf.jasperreports.json.data.JsonDataSource;
+import vttp.batch5.paf.movies.models.DirectorDetail;
 import vttp.batch5.paf.movies.models.Movie;
 import vttp.batch5.paf.movies.repositories.MongoMovieRepository;
 import vttp.batch5.paf.movies.repositories.MySQLMovieRepository;
@@ -34,11 +40,9 @@ public class MovieService {
     
     // check count in mysql
     Long mySqlInserted = sqlRepo.checkCount();
-    System.out.println(mySqlInserted);
 
     // check count in mongodb
     Long mongoInserted = mongoRepo.checkCount();
-    System.out.println(mongoInserted);
 
     if (mySqlInserted > 0 && mongoInserted > 0) {
       return true;
@@ -58,17 +62,22 @@ public class MovieService {
     // iterate list of strings, convert each to jsonobject, add to list
     for (String jsonString : strList) {
 
-      System.out.println(">>>> " + jsonString);
+      JsonReader jReader = Json.createReader(new StringReader(jsonString));
+      JsonArray jArray = jReader.readArray();
 
-      //JsonReader jReader = Json.createReader(new StringReader(jsonString));
-      //JsonObject jObject = jReader.readObject();
-      //jsonList.add(jObject);
+      for (JsonValue j : jArray) {
+
+        JsonObject jObject = j.asJsonObject();
+        jsonList.add(jObject);
+
+      }
 
     } 
 
     return jsonList;
 
   }
+  
 
   // filter json from zip file
   public List<JsonObject> filterZipJson(List<JsonObject> jsonList) {
@@ -85,10 +94,12 @@ public class MovieService {
       // get year as integer
       Integer releaseYear = releaseDate.getYear();
 
+      System.out.println(releaseYear);
+
       // if year is >= 2018, iterate through each jsonobj as map
       if (releaseYear >= 2018) {
 
-        // iterate json object as a map
+        // iterate json object
         for (Map.Entry<String, JsonValue> entry : movie.entrySet()) {
 
           // get entry key
@@ -99,7 +110,7 @@ public class MovieService {
 
           // check for null values
 
-          if (value == null || value.getValueType().equals(ValueType.NULL)) {
+          if (value == null) {
 
             // for strings - replace with empty strings
             if (key.equals("title") || key.equals("status") ||
@@ -109,21 +120,16 @@ public class MovieService {
             key.equals("spoken_languages") || key.equals("casts") ||
             key.equals("director") || key.equals("poster_path")) {
 
-              entry.setValue(Json.createValue(""));
+              movie.put(key, Json.createValue(""));
 
             } else if (key.equals("vote_average") || key.equals("vote_count") ||// for numbers - replace with 0
               key.equals("revenue") || key.equals("runtime") ||
               key.equals("budget") || key.equals("popularity") ||
               key.equals("imdb_rating") || key.equals("imdb_votes")) {
 
-              entry.setValue(Json.createValue(0));
+              movie.put(key, Json.createValue(0));
 
-            } else {
-
-              // for the rest
-              entry.setValue(Json.createValue(""));
-            
-            }
+            } 
 
             // no boolean values in documents
 
@@ -136,7 +142,7 @@ public class MovieService {
 
       }
 
-    } 
+    }
     
     return newList;
 
@@ -224,7 +230,27 @@ public class MovieService {
   // TODO: Task 3
   // You may change the signature of this method by passing any number of parameters
   // and returning any type
-  public void getProlificDirectors() {
+  public List<DirectorDetail> getProlificDirectors(Integer num) {
+
+    // get dir/count/ids from mongodb
+    List<Document> mongoDir = mongoRepo.getDirectors(num);
+
+    // new list to hold director details
+    List<DirectorDetail> dirList = new ArrayList<>();
+
+    for (Document d : mongoDir) {
+
+      // new detail
+      DirectorDetail dd = new DirectorDetail();
+
+      // set director name and count
+      dd.setDirector(d.getString("director"));
+      dd.setMovieCount(d.getInteger("movies_count"));
+
+    }
+
+    return null;
+
   }
 
 
@@ -232,6 +258,28 @@ public class MovieService {
   // You may change the signature of this method by passing any number of parameters
   // and returning any type
   public void generatePDFReport() {
+
+    // TODO
+    /*
+      // create overall report JSON datasource
+      JsonDataSource reportDS = new JsonDataSource();
+
+      // create director table Json data source = json array
+      JsonDataSource directorDS = new JsonDataSource();
+
+      // create report's params
+      Map<String, Object> params = new HashMap<>();
+      params.put("DIRECTOR_TABLE_DATASET", directorsDS);
+
+      // load report
+      JasperReport report = ...;
+
+      // populate report with JSON data sources
+      JasperPrint print = JasperFillManager.fillReport(report, params, reportDS);
+
+      // generate report as PDF
+    */
+    
 
   }
 

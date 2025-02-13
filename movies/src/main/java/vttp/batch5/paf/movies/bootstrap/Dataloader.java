@@ -1,11 +1,9 @@
 package vttp.batch5.paf.movies.bootstrap;
 
 import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +11,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
+import vttp.batch5.paf.movies.models.Movie;
 import vttp.batch5.paf.movies.services.MovieService;
 
 @Component
@@ -44,49 +46,49 @@ public class Dataloader implements CommandLineRunner {
       List<String> strList = new ArrayList<>();
       byte[] buffer = new byte[1024];
 
-      ZipEntry zipEntry;
-      int read;
+      while (zis.getNextEntry() != null) {
 
-        while ((zipEntry = zis.getNextEntry()) != null) {
-            while ((read = zis.read(buffer)) >= 0) {
-              strList.add(new String(buffer,0,read));
-            }
+        StringBuilder sb = new StringBuilder();
+
+        int read;
+          
+        while ((read = zis.read(buffer)) > 0) {
+          sb.append(new String(buffer,0,read, StandardCharsets.UTF_8));
         }
 
-        while (zipEntry != null){
-          zipEntry = zis.getNextEntry();
+        strList.add(sb.toString());
 
-        zis.closeEntry();
-        zis.close();
+      }
+        
+      zis.close(); // close input stream
 
-        }
+      // System.out.printf(">>>> Zip file contents read: %d\n\n", strList.size());
+      // can't debug file read > list of strings - only reads first string
 
-        // System.out.printf(">>>> Zip file contents read: %s\n\n", strList);
+      // check if zip file has been loaded into db
+      Boolean isLoaded = movieSvc.checkDatabases();
+      System.out.printf(">>>> File loaded in DB?: %b\n\n", isLoaded);
 
-        // check if zip file has been loaded into db
-        Boolean isLoaded = movieSvc.checkDatabases();
-        System.out.printf(">>>> File loaded in DB?: %b\n\n", isLoaded);
+      // TASK 2.2
 
-        // TASK 2.2
+      // if not loaded, load zip file into db
+      if (!isLoaded) {
+        // read json docs from zip file
+        List<JsonObject> jsonList = movieSvc.readZipAsJson(strList);
+        System.out.printf(">>>> File read to JSON list: %s\n\n", jsonList.toString());
 
-        // if not loaded, load zip file into db
-        if (!isLoaded) {
-          // read json docs from zip file
-          List<JsonObject> jsonList = movieSvc.readZipAsJson(strList);
-          System.out.printf(">>>> File read to JSON list: %d\n\n", jsonList.size());
+        // filter movies into new list of json objects - released aft 2018 and corrected movies
+        List<JsonObject> newList = movieSvc.filterZipJson(jsonList);
+        System.out.printf(">>>> JSON list filtered: %d\n\n", newList.size());
 
-          // filter movies into new list of json objects - released aft 2018 and corrected movies
-          /* List<JsonObject> newList = movieSvc.filterZipJson(jsonList);
-          System.out.printf(">>>> JSON list filtered: %d\n\n", newList.size());
+        // convert list of jsonobjects into list of movies
+        List<Movie> movieList = movieSvc.convJsonToMovies(newList);
+        System.out.printf(">>>> JSON list converted to movies: %d\n\n", movieList.size());
 
-          // convert list of jsonobjects into list of movies
-          List<Movie> movieList = movieSvc.convJsonToMovies(newList);
-          System.out.printf(">>>> JSON list converted to movies: %d\n\n", movieList.size());
+        // insert updated list of json doc into mysql
+        movieSvc.insertIntoDatabases(movieList);
 
-          // insert updated list of json doc into mysql
-          movieSvc.insertIntoDatabases(movieList); */
-
-        }
+      }
       
     }
     
